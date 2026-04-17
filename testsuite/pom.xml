@@ -44,7 +44,15 @@
         <!-- For some reason this needs to be true if base.feature.pack.artifactId=wildfly-galleon-pack
              But make it externally controllable in case someone wants to test with this turned off -->
         <ignore.not.excluded.layers>true</ignore.not.excluded.layers>
+        <!-- Base feature pack for provisioning, can be overridden to test against alternative distributions -->
+        <channel.feature.pack.location>${base.feature.pack.groupId}:${base.feature.pack.artifactId}:${base.feature.pack.version}</channel.feature.pack.location>
         <overwrite.provisioned.server>true</overwrite.provisioned.server>
+        <!-- Defaults for channel provisioning profile plugin coordinates.
+             Maven validates plugin versions at POM parse time even for inactive profiles,
+             so these must resolve to a valid version. Override on the CLI for actual use. -->
+        <channel.plugin.groupId>org.wildfly.plugins</channel.plugin.groupId>
+        <channel.plugin.artifactId>wildfly-maven-plugin</channel.plugin.artifactId>
+        <channel.plugin.version>${version.org.wildfly.plugins.wildfly-maven-plugin}</channel.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -185,9 +193,18 @@
                     <offline-provisioning>${galleon.offline}</offline-provisioning>
                     <record-provisioning-state>true</record-provisioning-state>
                     <overwrite-provisioned-server>${overwrite.provisioned.server}</overwrite-provisioned-server>
+                    <feature-packs>
+                        <feature-pack>
+                            <location>${channel.feature.pack.location}</location>
+                        </feature-pack>
+                        <feature-pack>
+                            <location>${vault.feature.pack.groupId}:${vault.feature.pack.artifactId}:${vault.feature.pack.version}</location>
+                        </feature-pack>
+                    </feature-packs>
                     <galleon-options>
                         <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
                         <optional-packages>passive+</optional-packages>
+                        <ignore-not-excluded-layers>${ignore.not.excluded.layers}</ignore-not-excluded-layers>
                         <config-stability-level>community</config-stability-level>
                         <package-stability-level>community</package-stability-level>
                     </galleon-options>
@@ -320,58 +337,136 @@
     </build>
     <profiles>
 
-        <!-- Default single feature pack provisioning -->
+        <!-- Channel-based provisioning with a custom base feature pack and Maven repository.
+             Useful for testing against alternative distributions that provide a WildFly channel.
+             Uses the distribution's own Maven plugin (channel.plugin.groupId / channel.plugin.artifactId)
+             for provisioning to ensure correct feature-pack family handling.
+             Override channel.feature.pack.location to change the base feature pack.
+             Example:
+               -Dchannel.manifest.groupId=org.example.channels
+               -Dchannel.manifest.artifactId=example-1.0
+               -Dchannel.manifest.version=1.0.0.Final
+               -Dchannel.feature.pack.location=org.example:wildfly-ee-galleon-pack
+               -Dchannel.plugin.groupId=org.example.plugins
+               -Dchannel.plugin.artifactId=example-maven-plugin
+               -Dchannel.plugin.version=1.0.0.Final
+               -Dchannel.repository.url=file:///path/to/local/repo
+        -->
         <profile>
-            <id>default.provisioning.profile</id>
+            <id>channel.provisioning.profile</id>
             <activation>
                 <property>
-                    <name>!base.feature.pack.artifactId</name>
+                    <name>channel.manifest.groupId</name>
                 </property>
             </activation>
+            <repositories>
+                <repository>
+                    <id>channel-provisioning</id>
+                    <url>${channel.repository.url}</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>channel-provisioning</id>
+                    <url>${channel.repository.url}</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                </pluginRepository>
+            </pluginRepositories>
             <build>
                 <plugins>
+                    <!-- Disable default wildfly-maven-plugin provisioning -->
                     <plugin>
                         <groupId>org.wildfly.plugins</groupId>
                         <artifactId>wildfly-maven-plugin</artifactId>
-                        <configuration>
-                            <feature-packs>
-                                <feature-pack>
-                                    <location>${vault.feature.pack.groupId}:${vault.feature.pack.artifactId}:${vault.feature.pack.version}</location>
-                                </feature-pack>
-                            </feature-packs>
-                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>wildfly-layers-provisioning</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>wildfly-full-provisioning</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
                     </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <profile>
-            <id>specified.base.provisioning.profile</id>
-            <activation>
-                <property>
-                    <name>base.feature.pack.version</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
+                    <!-- Provision using the distribution's Maven plugin with channel -->
                     <plugin>
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <groupId>${channel.plugin.groupId}</groupId>
+                        <artifactId>${channel.plugin.artifactId}</artifactId>
+                        <version>${channel.plugin.version}</version>
                         <configuration>
-                            <galleon-options>
-                                <!-- For some reason this needs to be true if base.feature.pack.artifactId=wildfly-galleon-pack -->
-                                <ignore-not-excluded-layers>${ignore.not.excluded.layers}</ignore-not-excluded-layers>
-                            </galleon-options>
+                            <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                            <offline-provisioning>${galleon.offline}</offline-provisioning>
+                            <record-provisioning-state>true</record-provisioning-state>
+                            <overwrite-provisioned-server>${overwrite.provisioned.server}</overwrite-provisioned-server>
+                            <channels>
+                                <channel>
+                                    <manifest>
+                                        <groupId>${channel.manifest.groupId}</groupId>
+                                        <artifactId>${channel.manifest.artifactId}</artifactId>
+                                        <version>${channel.manifest.version}</version>
+                                    </manifest>
+                                </channel>
+                            </channels>
                             <feature-packs>
                                 <feature-pack>
-                                    <location>${base.feature.pack.groupId}:${base.feature.pack.artifactId}:${base.feature.pack.version}</location>
-                                    <inherit-packages>false</inherit-packages>
+                                    <location>${channel.feature.pack.location}</location>
                                 </feature-pack>
                                 <feature-pack>
                                     <location>${vault.feature.pack.groupId}:${vault.feature.pack.artifactId}:${vault.feature.pack.version}</location>
                                 </feature-pack>
                             </feature-packs>
+                            <galleon-options>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                                <optional-packages>passive+</optional-packages>
+                                <ignore-not-excluded-layers>${ignore.not.excluded.layers}</ignore-not-excluded-layers>
+                                <config-stability-level>community</config-stability-level>
+                                <package-stability-level>community</package-stability-level>
+                            </galleon-options>
                         </configuration>
+                        <executions>
+                            <execution>
+                                <id>wildfly-layers-provisioning</id>
+                                <goals>
+                                    <goal>provision</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <provisioning-dir>${project.build.directory}/wildfly-layers</provisioning-dir>
+                                    <layers>
+                                        <layer>base-server</layer>
+                                        <layer>elytron</layer>
+                                        <layer>management</layer>
+                                        <layer>core-tools</layer>
+                                        <layer>web-server</layer>
+                                        <layer>hashicorp-vault</layer>
+                                    </layers>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>wildfly-full-provisioning</id>
+                                <goals>
+                                    <goal>provision</goal>
+                                </goals>
+                                <phase>pre-integration-test</phase>
+                                <configuration>
+                                    <provisioning-dir>${project.build.directory}/wildfly-full</provisioning-dir>
+                                    <layers>
+                                        <layer>base-server</layer>
+                                        <layer>elytron</layer>
+                                        <layer>management</layer>
+                                        <layer>core-tools</layer>
+                                        <layer>web-server</layer>
+                                        <layer>hashicorp-vault</layer>
+                                    </layers>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
