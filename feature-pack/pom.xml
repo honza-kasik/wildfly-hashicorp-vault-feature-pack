@@ -218,6 +218,9 @@
                                 <id>wildfly-vault-feature-pack-build</id>
                                 <configuration>
                                     <configFile>wildfly-feature-pack-build-eap.xml</configFile>
+                                    <!-- Forked embedded doesn't propagate the community stability
+                                         level, causing the vault extension to be skipped. -->
+                                    <fork-embedded>false</fork-embedded>
                                 </configuration>
                             </execution>
                         </executions>
