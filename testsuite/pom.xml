@@ -38,7 +38,7 @@
         <vault.feature.pack.groupId>${project.groupId}</vault.feature.pack.groupId>
         <vault.feature.pack.artifactId>wildfly-vault-feature-pack</vault.feature.pack.artifactId>
         <vault.feature.pack.version>${project.version}</vault.feature.pack.version>
-        <base.feature.pack.groupId>org.wildfly.security</base.feature.pack.groupId>
+        <base.feature.pack.groupId>org.wildfly</base.feature.pack.groupId>
         <base.feature.pack.artifactId>wildfly-ee-galleon-pack</base.feature.pack.artifactId>
         <base.feature.pack.version>${version.org.wildfly}</base.feature.pack.version>
         <!-- For some reason this needs to be true if base.feature.pack.artifactId=wildfly-galleon-pack
