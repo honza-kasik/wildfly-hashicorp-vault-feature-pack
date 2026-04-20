@@ -33,15 +33,4 @@
         <system-path path="modules/system/layers/base/" />
     </system-paths>
 
-    <generate-feature-specs>
-        <extensions>
-            <standalone>
-                <extension>org.wildfly.extension.hashicorp-vault</extension>
-            </standalone>
-            <domain>
-                <extension>org.wildfly.extension.hashicorp-vault</extension>
-            </domain>
-        </extensions>
-    </generate-feature-specs>
-
 </build>
