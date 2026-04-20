@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+
+<feature-spec xmlns="urn:jboss:galleon:feature-spec:2.0" name="subsystem.hashicorp-vault.credential-store" stability="community">
+    <annotation name="jboss-op">
+        <elem name="name" value="add"/>
+        <elem name="op-params" value="authentication-context,credential-reference,host-address,namespace"/>
+        <elem name="addr-params" value="profile,subsystem,credential-store"/>
+    </annotation>
+    <annotation name="feature-branch">
+        <elem name="id" value="subsystem.hashicorp-vault"/>
+    </annotation>
+    <provides>
+        <capability name="$profile.org.wildfly.security.credential-store.$credential-store"/>
+    </provides>
+    <requires>
+        <capability name="$profile.org.wildfly.security.credential-store.$credential-reference" optional="true"/>
+        <capability name="$profile.org.wildfly.security.authentication-context.$authentication-context" optional="true"/>
+    </requires>
+    <refs>
+        <ref feature="subsystem.hashicorp-vault"/>
+        <ref feature="profile" nillable="true"/>
+    </refs>
+    <params>
+        <param name="credential-store" feature-id="true"/>
+        <param name="profile" feature-id="true" default="GLN_UNDEFINED"/>
+        <param name="namespace" nillable="true" stability="community"/>
+        <param name="subsystem" feature-id="true" default="hashicorp-vault"/>
+        <param name="credential-reference" nillable="true" stability="community"/>
+        <param name="authentication-context" nillable="true" stability="community"/>
+        <param name="host-address" stability="community"/>
+    </params>
+</feature-spec>
