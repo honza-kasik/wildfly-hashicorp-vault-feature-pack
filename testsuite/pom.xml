@@ -26,7 +26,7 @@
     <properties>
 
         <version.org.jboss.arquillian>1.9.5.Final</version.org.jboss.arquillian>
-        <version.org.wildfly.arquillian>5.0.1.Final</version.org.wildfly.arquillian>
+        <version.org.wildfly.arquillian>5.1.0.Final</version.org.wildfly.arquillian>
         <version.jakarta.servlet-api>6.0.0</version.jakarta.servlet-api>
         <surefire.memory.args>-Xmx512m -XX:MetaspaceSize=128m</surefire.memory.args>
         <surefire.jpda.args>-agentlib:jdwp=transport=dt_socket,address=*:${as.debug.port},server=y,suspend=y</surefire.jpda.args>
@@ -414,6 +414,103 @@
                                 </feature-pack>
                             </feature-packs>
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Run tests against a pre-existing WildFly installation instead of provisioning
+             a new one via Galleon. The server at the supplied path must already have the
+             hashicorp-vault feature pack installed.
+
+             Provisioning is skipped entirely. Surefire runs a single execution (instead of
+             the default layers + full split) against the supplied path, and failsafe
+             integration tests do the same. Arquillian still manages the server lifecycle
+             (starts before tests, stops after) exactly as it does with provisioned servers;
+             if the server is already running, Arquillian connects to it instead
+             (allowConnectingToRunningServer=true in arquillian.xml).
+
+             This profile is mutually exclusive with channel.provisioning.profile — do not
+             combine -Djboss.home with -Dchannel.manifest.groupId.
+
+             Example:
+               mvn verify -pl testsuite -Djboss.home=/path/to/wildfly
+        -->
+        <profile>
+            <id>existing.dist.profile</id>
+            <activation>
+                <property>
+                    <name>jboss.home</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- Disable Galleon provisioning — the server already exists at ${jboss.home} -->
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>wildfly-layers-provisioning</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>wildfly-full-provisioning</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Replace the two default surefire executions (layers + full) with a
+                         single execution that uses the supplied jboss.home path.
+                         The parent plugin configuration (excludes, argLine, common system
+                         properties) is inherited automatically. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>layers-tests</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>complete-dist-tests</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>existing-dist-tests</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemProperties>
+                                        <jboss.home>${jboss.home}</jboss.home>
+                                    </systemProperties>
+                                    <reportNameSuffix>existing-dist</reportNameSuffix>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Override the jboss.home system property for failsafe integration tests.
+                         This merges with the base execution configuration — only jboss.home
+                         changes; other system properties (arquillian.launch, server.jvm.args,
+                         server.jboss.args) are preserved from the base config. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <jboss.home>${jboss.home}</jboss.home>
+                                    </systemPropertyVariables>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>

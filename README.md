@@ -29,6 +29,36 @@ Build the project using Maven:
 mvn clean install
 ```
 
+## Testing
+
+Run the full test suite (provisions WildFly via Galleon, installs the feature pack, runs all tests):
+
+```bash
+mvn clean verify
+```
+
+### Testing against a pre-existing WildFly
+
+To skip Galleon provisioning and run tests against a WildFly installation that already
+has the hashicorp-vault feature pack installed, pass `-Djboss.home`:
+
+```bash
+mvn verify -pl testsuite -Djboss.home=/path/to/wildfly
+```
+
+The server does **not** need to be running — Arquillian starts and stops it automatically
+(same as with a provisioned server). If the server **is** already running on port 9990,
+Arquillian connects to it instead of starting a second instance.
+
+To run only the integration tests (skip surefire unit tests):
+
+```bash
+mvn verify -pl testsuite -Djboss.home=/path/to/wildfly -DskipTests
+```
+
+> **Note:** `-Djboss.home` and `-Dchannel.manifest.groupId` (channel-based provisioning)
+> are mutually exclusive — do not combine them.
+
 ## Usage
 
 After building, you can provision a WildFly server with the HashiCorp Vault feature pack using Galleon:
